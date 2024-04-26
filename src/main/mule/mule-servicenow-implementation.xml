@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:servicenow="http://www.mulesoft.org/schema/mule/servicenow"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/servicenow http://www.mulesoft.org/schema/mule/servicenow/current/mule-servicenow.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="891125fe-1359-4c52-9e7d-17ed3a897881" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<servicenow:config name="ServiceNow_Config" doc:name="ServiceNow Config" doc:id="b627b5d8-f0fe-4298-9c7d-d2a438964b50" >
+		<servicenow:basic-connection username="admin" password="password" serviceAddress="https://dev260208.service-now.com/">
+			<servicenow:transport >
+				<servicenow:basic-auth-http-message-dispatcher-provider username="admin" password="password" />
+			</servicenow:transport>
+		</servicenow:basic-connection>
+	</servicenow:config>
+	<flow name="mule-servicenow-create-main-flow" doc:id="57b04ad7-3b84-4c69-bf22-79824d498c0e" >
+		<http:listener doc:name="Listener (/snow/create)" doc:id="10fdb573-53c4-4567-afe6-a4cc5254e043" config-ref="HTTP_Listener_config" path="/snow/create"/>
+		<logger level="INFO" doc:name="Entry Log" doc:id="f4ab193a-b7ed-4a1d-ba8b-b7cdea63bb53" message="Entry Log"/>
+		<ee:transform doc:name="Prepare Request" doc:id="71f3b382-7f62-40b4-9d5c-643307f5a34f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+ns inc http://www.service-now.com/incident
+---
+{
+	inc#insert: {
+		Description: "Snow implementation",
+		short_description: "Created through Mule Application"
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<servicenow:invoke doc:name="Invoke" doc:id="bea200ef-1e8e-4d64-b97f-fc08bf585a34" config-ref="ServiceNow_Config" service="incident" operation="insert"/>
+		<ee:transform doc:name="Parse Response" doc:id="90bc956d-cd1a-40b8-993b-c93a6c03e0a1">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Exit Log" doc:id="b5bd5dae-8214-460b-91c0-bfba702f9fea" message="Exit Log" />
+	</flow>
+	<flow name="mule-servicenow-retrieve-main-flow" doc:id="0e2d87b4-0e20-4991-af28-5e19e138376f" >
+		<http:listener doc:name="Listener (/snow/retrieve)" doc:id="93dcfc01-5f41-4868-9010-14162047443d" config-ref="HTTP_Listener_config" path="/snow/retrieve" />
+		<logger level="INFO" doc:name="Entry Log" doc:id="bbae7d1e-42c1-4373-a2e6-30c3f8a3b3c6" message="Entry Log" />
+		<ee:transform doc:name="Prepare Request" doc:id="85e4ca18-e7d6-440c-9cdb-5acc3f2ed791" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+ns inc http://www.service-now.com/incident
+---
+{
+	inc#getRecords: {
+		Description: "Snow"
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<servicenow:invoke service="incident" operation="insert" doc:name="Invoke" doc:id="644c60af-9d7c-4cb5-87dc-82ba424847f4" config-ref="ServiceNow_Config" />
+		<ee:transform doc:name="Parse Response" doc:id="75f17a4a-b654-4125-b937-e7ea94769bb6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Exit Log" doc:id="da2d1ae1-75cb-4d55-9c65-9f5a5be6b578" message="Exit Log" />
+	</flow>
+</mule>
